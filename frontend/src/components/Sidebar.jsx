@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProjects, createProject, getSessions, createSession, deleteSession, getDatasets, deleteDataset } from "../services/api";
 import UploadDataset from "./UploadDataset";
-import { PlusCircle, MessageSquare, Trash2, Database, CheckCircle, XCircle, AlertTriangle, X, Eye, EyeOff } from "lucide-react";
+import { PlusCircle, MessageSquare, Trash2, Database, CheckCircle, XCircle, AlertTriangle, X, Eye, EyeOff, ShieldCheck } from "lucide-react";
 
 import toast from "react-hot-toast";
 
@@ -292,13 +292,22 @@ export default function Sidebar({
                           <button
                             onClick={() => setViewingDatasetId(viewingDatasetId === d.id ? null : d.id)}
                             className="opacity-0 group-hover:opacity-100 transition text-indigo-400 hover:text-indigo-300 shrink-0 mx-1"
-                            title={viewingDatasetId === d.id ? "Close report" : "View report"}
+                            title={viewingDatasetId === d.id ? "Close report" : "View Visual Analytics"}
                           >
                             {viewingDatasetId === d.id ? (
                               <Eye className="w-4 h-4" />
                             ) : (
                               <EyeOff className="w-4 h-4" />
                             )}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setViewingDatasetId(d.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition text-emerald-400 hover:text-emerald-300 shrink-0 mx-1"
+                            title="Database Quality & Health Audit"
+                          >
+                            <ShieldCheck className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setConfirmingDataset(d.id)}

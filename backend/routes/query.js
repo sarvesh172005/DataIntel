@@ -86,14 +86,19 @@ router.post("/", authMiddleware, async (req, res) => {
         if (generatedSQL.toLowerCase().includes("please enter any valid query")) {
 
             // 🔥 Save to MongoDB History Even for Rejections
-            const history = new ChatHistory({
-                userId: req.user.id,
-                datasetId,
-                question,
-                sqlGenerated: null,
-                aiResponse: "Please enter any valid query related to the dataset.",
-            });
-            await history.save();
+            try {
+                const history = new ChatHistory({
+                    userId: req.user.id,
+                    sessionId,
+                    datasetId,
+                    question,
+                    sqlGenerated: null,
+                    aiResponse: "Please enter any valid query related to the dataset.",
+                });
+                await history.save();
+            } catch (histErr) {
+                console.error("Failed to save rejection history:", histErr.message);
+            }
 
             return res.json({
                 answer: "Please enter any valid query related to the dataset.",
@@ -188,24 +193,28 @@ router.post("/", authMiddleware, async (req, res) => {
         /* ==============================
            7.5️⃣ Save to MongoDB
         ============================== */
-        const aiResponseString = typeof explanation === 'object' ? JSON.stringify(explanation) : explanation;
-        const history = new ChatHistory({
-            userId: req.user.id,
-            sessionId,
-            datasetId,
-            question,
-            sqlGenerated: generatedSQL,
-            aiResponse: aiResponseString,
-            queryData: rows
-        });
-        await history.save();
+        try {
+            const aiResponseString = typeof explanation === 'object' ? JSON.stringify(explanation) : explanation;
+            const history = new ChatHistory({
+                userId: req.user.id,
+                sessionId,
+                datasetId,
+                question,
+                sqlGenerated: generatedSQL,
+                aiResponse: aiResponseString,
+                queryData: rows
+            });
+            await history.save();
 
-        // Update Session Title if it is "New Chat"
-        const ChatSession = require("../models/ChatSession");
-        const session = await ChatSession.findById(sessionId);
-        if (session && session.title === "New Chat") {
-            session.title = question.substring(0, 30) + "...";
-            await session.save();
+            // Update Session Title if it is "New Chat"
+            const ChatSession = require("../models/ChatSession");
+            const session = await ChatSession.findById(sessionId);
+            if (session && session.title === "New Chat") {
+                session.title = question.substring(0, 30) + "...";
+                await session.save();
+            }
+        } catch (mongoErr) {
+            console.error("Failed to save chat history to MongoDB:", mongoErr.message);
         }
 
         /* ==============================

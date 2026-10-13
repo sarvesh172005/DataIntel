@@ -158,7 +158,7 @@ export default function ChatLayout({ projectId, sessionId, setSessionId, dataset
 
     try {
       const res = await axios.post(
-        "https://dataintel-node-backend.onrender.com/ask",
+        "http://localhost:5000/ask",
         { datasetId, question: questionText, sessionId },
         { headers: { "x-auth-token": token }, signal: controller.signal }
       );

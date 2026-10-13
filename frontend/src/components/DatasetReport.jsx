@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, Database, Layers, LayoutGrid, FileText, Activity, Download, Loader2, PieChart as PieChartIcon, BarChart2, Lightbulb, TrendingUp, Sparkles } from 'lucide-react';
+import { X, Database, Layers, LayoutGrid, FileText, Activity, Download, Loader2, PieChart as PieChartIcon, BarChart2, Lightbulb, TrendingUp, Sparkles, ShieldCheck } from 'lucide-react';
 import { getDatasetSummary, getDatasetSuggestions } from '../services/api';
+import DataQualityPanel from './DataQualityPanel';
 import {
   XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area,
   BarChart, Bar, PieChart, Pie, Cell, CartesianGrid, Legend
@@ -10,7 +11,8 @@ import jsPDF from 'jspdf';
 
 const COLORS = ['#818cf8', '#34d399', '#f472b6', '#fbbf24', '#60a5fa', '#a78bfa', '#f87171'];
 
-export default function DatasetReport({ datasetId, token, onClose }) {
+export default function DatasetReport({ datasetId, token, onClose, initialTab = "overview" }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [data, setData] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [xAxisKey, setXAxisKey] = useState(null);
@@ -20,8 +22,8 @@ export default function DatasetReport({ datasetId, token, onClose }) {
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
   const reportRef = useRef(null);
-  
-  useEffect(() => {
+
+  const fetchSummary = () => {
     if (datasetId) {
       setLoading(true);
       getDatasetSummary(datasetId, token)
@@ -63,6 +65,10 @@ export default function DatasetReport({ datasetId, token, onClose }) {
           setLoadingSuggestions(false);
         });
     }
+  };
+
+  useEffect(() => {
+    fetchSummary();
   }, [datasetId, token]);
 
   const exportToPDF = async () => {
@@ -171,7 +177,7 @@ export default function DatasetReport({ datasetId, token, onClose }) {
 
   return (
     <div className="flex-1 flex flex-col bg-[#020617] text-white overflow-hidden relative">
-      <div className="flex items-center justify-between p-6 border-b border-[#1e293b]/50 bg-[#0f172a]/80 backdrop-blur-md z-10 w-full">
+      <div className="flex flex-col md:flex-row md:items-center justify-between p-6 border-b border-[#1e293b]/50 bg-[#0f172a]/80 backdrop-blur-md z-10 w-full gap-4">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-400 ring-1 ring-indigo-500/20">
             <Database className="w-6 h-6" />
@@ -186,12 +192,39 @@ export default function DatasetReport({ datasetId, token, onClose }) {
             </div>
           </div>
         </div>
+
+        {/* Tab Switcher */}
+        <div className="flex items-center bg-[#1e293b]/80 border border-[#334155] p-1 rounded-2xl self-start md:self-auto">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "overview"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Visual Analytics</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("quality")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "quality"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Database Health & Quality</span>
+          </button>
+        </div>
+
         <div className="flex items-center gap-3">
-          {data && (
+          {data && activeTab === "overview" && (
             <button 
               onClick={exportToPDF}
               disabled={isExporting}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-2xl font-bold shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50 active:scale-95"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-2xl font-bold shadow-lg shadow-indigo-600/20 transition-all disabled:opacity-50 active:scale-95 text-xs"
             >
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               Export PDF
@@ -209,7 +242,15 @@ export default function DatasetReport({ datasetId, token, onClose }) {
 
       <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
         <div ref={reportRef} className="p-6 md:p-10 space-y-10 max-w-7xl mx-auto pb-24">
-          {loading ? (
+          {activeTab === "quality" ? (
+            <DataQualityPanel 
+              datasetId={datasetId} 
+              token={token} 
+              onDatasetCleaned={() => {
+                fetchSummary();
+              }}
+            />
+          ) : loading ? (
             <div className="flex flex-col items-center justify-center py-32 space-y-6">
               <div className="relative">
                 <Loader2 className="w-16 h-16 text-indigo-500 animate-spin" />

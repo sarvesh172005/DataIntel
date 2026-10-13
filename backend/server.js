@@ -10,6 +10,7 @@ const authRoute = require("./routes/auth");
 const historyRoute = require("./routes/history");
 const projectsRoute = require("./routes/projects");
 const sessionsRoute = require("./routes/sessions");
+const qualityRoute = require("./routes/quality");
 const connectMongo = require("./services/mongoService");
 
 const app = express();
@@ -30,6 +31,7 @@ app.use("/datasets", datasetsRoute);
 app.use("/history", historyRoute);
 app.use("/projects", projectsRoute);
 app.use("/sessions", sessionsRoute);
+app.use("/quality", qualityRoute);
 
 const PORT = process.env.PORT || 5000;
 
