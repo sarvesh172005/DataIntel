@@ -176,4 +176,4 @@ npm run dev
 The backend implements a lightweight SQL Validator (`node-sql-parser`) before executing generated queries against the MySQL database. It strictly ensures that only `SELECT` queries are executed to prevent destructive `DROP`, `DELETE`, or `UPDATE` operations by the AI or user injections.
 
 ---
-*Created by [Itz-Om17,ThakareJay05]*
+
