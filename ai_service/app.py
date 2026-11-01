@@ -39,7 +39,7 @@ class SuggestReportRequest(BaseModel):
 
 @app.post("/ai/test")
 def test_ai():
-    print("hii from AI service 🤖")
+    print("hii from AI service AI")
     return {"message": "AI received"}
 
 @app.post("/generate-sql")

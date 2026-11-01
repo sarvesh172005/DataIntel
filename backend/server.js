@@ -12,11 +12,13 @@ const projectsRoute = require("./routes/projects");
 const sessionsRoute = require("./routes/sessions");
 const qualityRoute = require("./routes/quality");
 const connectMongo = require("./services/mongoService");
+const initDb = require("./init_db");
 
 const app = express();
 
-// Connect to MongoDB
+// Connect to MongoDB & Initialize MySQL tables
 connectMongo();
+initDb();
 
 app.use(cors({
     origin: ['http://localhost:5173', 'https://data-intel.vercel.app'],

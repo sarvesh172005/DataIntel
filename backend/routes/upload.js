@@ -29,9 +29,23 @@ router.post('/', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: "No file uploaded" });
         }
 
-        const projectId = req.body.projectId || null;
-        const chatId = req.body.chatId || null;
+        let projectId = req.body.projectId || null;
+        if (projectId === 'null' || projectId === 'undefined' || projectId === '') {
+            projectId = null;
+        }
+        if (projectId) {
+            projectId = parseInt(projectId, 10);
+            if (isNaN(projectId)) {
+                projectId = null;
+            } else {
+                const [proj] = await connection.query("SELECT id FROM projects WHERE id = ?", [projectId]);
+                if (!proj || proj.length === 0) {
+                    projectId = null;
+                }
+            }
+        }
 
+        const chatId = req.body.chatId || null;
         const filePath = req.file.path;
         const tableName = `dataset_${uuidv4().replace(/-/g, '')}`;
 
@@ -46,7 +60,10 @@ router.post('/', upload.single('file'), async (req, res) => {
             fs.createReadStream(filePath)
                 .pipe(csv())
                 .on('headers', (headers) => {
-                    headers.forEach(h => columns.push(h.trim()));
+                    headers.forEach(h => {
+                        const cleanHeader = h.replace(/^\uFEFF/, '').trim();
+                        if (cleanHeader) columns.push(cleanHeader);
+                    });
                 })
                 .on('data', (data) => rows.push(data))
                 .on('end', resolve)
@@ -80,7 +97,7 @@ router.post('/', upload.single('file'), async (req, res) => {
             let sampleValues = null;
 
             const isNumeric = uniqueValues.length > 0 &&
-                uniqueValues.every(v => !isNaN(v));
+                uniqueValues.every(v => !isNaN(Number(v)));
 
             if (isNumeric) {
                 dataType = "DOUBLE";
@@ -113,7 +130,7 @@ router.post('/', upload.single('file'), async (req, res) => {
         );
 
         /* =========================================
-           4️⃣ Batch Insert (🔥 MAJOR FIX)
+           4️⃣ Batch Insert
         ========================================= */
 
         const batchSize = 1000;
@@ -123,9 +140,16 @@ router.post('/', upload.single('file'), async (req, res) => {
             const batch = rows.slice(i, i + batchSize);
 
             const values = batch.map(row =>
-                columns.map(col => {
-                    let val = row[col]?.trim();
-                    return val ? val : null;
+                columnMeta.map(meta => {
+                    let val = row[meta.columnName]?.trim();
+                    if (val === undefined || val === null || val === "" || val === "NA" || val === "N/A" || val === "null") {
+                        return null;
+                    }
+                    if (meta.dataType === "DOUBLE") {
+                        const num = Number(val);
+                        return isNaN(num) ? null : num;
+                    }
+                    return val;
                 })
             );
 
@@ -138,15 +162,23 @@ router.post('/', upload.single('file'), async (req, res) => {
         }
 
         /* =========================================
-           5️⃣ Auto Index Categorical Columns
+           5️⃣ Auto Index Categorical Columns (Safe)
         ========================================= */
 
+        let idxCounter = 0;
         for (let meta of columnMeta) {
             if (meta.sampleValues) {
-                await connection.query(
-                    `CREATE INDEX idx_${meta.columnName}
-                     ON \`${tableName}\` (\`${meta.columnName}\`)`
-                );
+                idxCounter++;
+                const sanitizedCol = meta.columnName.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 30);
+                const indexName = `idx_${idxCounter}_${sanitizedCol}`;
+                try {
+                    await connection.query(
+                        `CREATE INDEX \`${indexName}\`
+                         ON \`${tableName}\` (\`${meta.columnName}\`)`
+                    );
+                } catch (idxErr) {
+                    console.warn(`Skipping index creation for column ${meta.columnName}:`, idxErr.message);
+                }
             }
         }
 
@@ -181,7 +213,9 @@ router.post('/', upload.single('file'), async (req, res) => {
         }
 
         await connection.commit();
-        fs.unlinkSync(filePath);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
 
         res.json({
             message: "Dataset initialized successfully",
